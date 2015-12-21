@@ -9,7 +9,7 @@ help:
 CC=icc
 CFLAGS=-O3
 INCL=-I/home/quantum/FEAST/3.0/include
-LIB=-L/home/quantum/FEAST/3.0/lib/x64 -lfeast_sparse -lfeast -mkl
+LIB=-L/home/quantum/FEAST/3.0/lib/x64 -lfeast_sparse -lfeast_banded -lfeast -mkl
 
 #==============================================================
 # Include the LIB (feast and  pardiso- lapack - blas)  

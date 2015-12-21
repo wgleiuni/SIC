@@ -5,10 +5,12 @@
 #include <complex.h>
 #include "feast.h"
 #include "feast_sparse.h"
+#include "feast_banded.h"
 #include "mkl.h"
 #include "mkl_vsl.h"
 
 #define N_ 51
+#define LDA_ 2
 #define METHOD VSL_RNG_METHOD_UNIFORM_STD
 
 double _Complex *psi_;
@@ -82,7 +84,7 @@ void WG_getPara(int Idx,int Nem,int norm,int diag,double t,double Dis,double alp
     if (diag==0)
     {
         Drand_=(double *)malloc(Nem_*(N_-1)*sizeof(double));
-        H_=(double *)malloc(2*(N_-1)*sizeof(double));
+        H_=(double *)malloc(2*LDA_*N_*sizeof(double));
         JA_=(int *)malloc((N_-1)*sizeof(int));
         vdRngUniform(METHOD,stream_,Nem_*(N_-1),Drand_,-Dis_,Dis_);
     }
@@ -109,15 +111,17 @@ void WG_getDis()
     int i;
     if (diag_==0)
     {
+        *H_=0.0;
+        *(H_+1)=0.0;
+        *(H_+2)=0.0;
+        *(H_+3)=0.0;
         for (i=0;i<N_-1;i++)
         {
-            *(H_+2*i)=exp(-2.0**(Drand_+(N_-1)*iNem_+i));
-            *(H_+2*i+1)=alpha_*(1.0+*(Drand_+(N_-1)*iNem_+i))*exp(-2.0**(Drand_+(N_-1)*iNem_+i));
-            *(IA_+i)=i+1;
-            *(JA_+i)=i+2;
+            *(H_+4*i+3+1)=exp(-2.0**(Drand_+(N_-1)*iNem_+i));
+            *(H_+4*i+3+2)=alpha_*(1.0+*(Drand_+(N_-1)*iNem_+i))*exp(-2.0**(Drand_+(N_-1)*iNem_+i));
+            *(H_+4*i+3+3)=0.0;
+            *(H_+4*i+3+4)=0.0;
         }
-        *(IA_+N_-1)=N_;
-        *(IA_+N_)=N_;
     }
     else
     {
@@ -148,7 +152,7 @@ void WG_getDis()
 void WG_eigensolve()
 {
     char UPLO='U';
-    int feastparam[64],loop,M0,M,info,N;
+    int feastparam[64],loop,M0,M,info,N,klu,LDA;
     double epsout,r,*res;
     double Emid[2];
 
@@ -157,13 +161,15 @@ void WG_eigensolve()
     Emid[0]=0;
     Emid[1]=0;
     res=(double *)malloc(N_*sizeof(double));
+    klu=1;
+    LDA=2;
 
     feastinit(feastparam);
 
     r=4.0;
     feastparam[17]=50;
     feastparam[9]=1;
-    zfeast_scsrev(&UPLO,&N,H_,IA_,JA_,feastparam,&epsout,&loop,Emid,&r,&M0,eig_,vec_,&M,res,&info);
+    zfeast_sbev(&UPLO,&N,&klu,H_,&LDA,feastparam,&epsout,&loop,Emid,&r,&M0,eig_,vec_,&M,res,&info);
     if (info!=0)
     {
         printf("info = %d \n",info);
